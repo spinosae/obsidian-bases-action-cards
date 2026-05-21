@@ -181,10 +181,10 @@ imageEl.addEventListener("error", () => imageEl.remove());
 			return;
 		}
 
-if (isExternalOrProtocolLink(redirectTarget)) {
-window.open(redirectTarget, "_blank");
-return;
-}
+		if (isExternalOrProtocolLink(redirectTarget)) {
+			window.open(normalizeExternalLink(redirectTarget), "_blank");
+			return;
+		}
 
 		try {
 			await this.app.workspace.openLinkText(redirectTarget, entry.file.path, false);
@@ -322,8 +322,11 @@ return destination;
 return null;
 }
 
+/**
+ * Detects links that are path-like resources (absolute or relative) instead of protocol URLs.
+ */
 function isRootRelativeResource(value: string): boolean {
-return value.startsWith("/") || value.startsWith("./") || value.startsWith("../");
+	return value.startsWith("/") || value.startsWith("./") || value.startsWith("../");
 }
 
 function isExternalOrProtocolLink(value: string): boolean {
@@ -331,9 +334,13 @@ if (value.startsWith("www.")) {
 return true;
 }
 
-return /^[a-zA-Z][a-zA-Z0-9+.-]*:/u.test(value);
+	return /^[a-zA-Z][a-zA-Z0-9+.-]*:/u.test(value);
+}
+
+function normalizeExternalLink(value: string): string {
+	return value.startsWith("www.") ? `https://${value}` : value;
 }
 
 function isHexColor(value: string): boolean {
-return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/u.test(value);
+	return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/u.test(value);
 }
