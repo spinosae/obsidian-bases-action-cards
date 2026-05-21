@@ -25,10 +25,14 @@ color: var(--text-normal);
 display: grid;
 grid-template-columns: repeat(
 auto-fill,
-minmax(min(100%, var(--bases-cards-redirect-card-size)), 1fr)
+minmax(
+	min(100%, var(--bases-cards-redirect-card-size)),
+	min(100%, var(--bases-cards-redirect-card-size))
+)
 );
 gap: 0.75rem;
 align-items: start;
+justify-content: start;
 }
 
 .bases-cards-redirect-card {
@@ -100,16 +104,29 @@ gap: 0.25rem;
 }
 
 .bases-cards-redirect-property {
+display: flex;
+flex-direction: column;
+gap: 0.1rem;
+color: var(--text-muted);
+}
+
+.bases-cards-redirect-property-name {
+display: block;
 font-size: var(--font-ui-small);
 line-height: 1.35;
-overflow: hidden;
 color: var(--text-muted);
 }
 
 .bases-cards-redirect-property-value {
 display: block;
+font-size: var(--font-ui-small);
+line-height: 1.35;
 color: var(--text-muted);
 overflow: hidden;
 text-overflow: ellipsis;
 white-space: nowrap;
+}
+
+.bases-cards-redirect-property-value--null {
+color: var(--text-faint);
 }

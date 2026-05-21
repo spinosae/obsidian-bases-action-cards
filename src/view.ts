@@ -9,12 +9,14 @@ BasesViewRegistration,
 	LinkValue,
 	ListValue,
 	Notice,
-	QueryController,
-	StringValue,
-	TFile,
-	UrlValue,
-	Value,
-	ViewOption,
+NullValue,
+QueryController,
+RenderContext,
+StringValue,
+TFile,
+UrlValue,
+Value,
+ViewOption,
 } from "obsidian";
 
 export const BASES_CARDS_REDIRECT_VIEW_ID = "cards-redirect";
@@ -154,7 +156,11 @@ cardEl.tabIndex = 0;
 cardEl.setAttribute("role", "button");
 cardEl.setAttribute("aria-label", `Open ${entry.file.basename}`);
 
-cardEl.addEventListener("click", () => {
+cardEl.addEventListener("click", (event) => {
+const target = event.target;
+if (target instanceof HTMLElement && target.closest("a")) {
+	return;
+}
 void this.openCardTarget(entry);
 });
 cardEl.addEventListener("keydown", (event) => {
@@ -189,25 +195,37 @@ const propertyListEl = bodyEl.createDiv({ cls: "bases-cards-redirect-card-proper
 let renderedAnyProperty = false;
 
 for (const propertyId of visibleProperties) {
-const value = entry.getValue(propertyId);
-if (!value) {
-continue;
-}
-
-const displayValue = value.toString().trim();
-if (!displayValue) {
-continue;
-}
-
 renderedAnyProperty = true;
+const propertyName = this.config.getDisplayName(propertyId);
 const itemEl = propertyListEl.createDiv({ cls: "bases-cards-redirect-property" });
 itemEl.createSpan({
-cls: "bases-cards-redirect-property-value",
-text: displayValue,
-attr: {
-	"aria-label": `${this.config.getDisplayName(propertyId)}: ${displayValue}`,
-},
+cls: "bases-cards-redirect-property-name",
+text: propertyName,
 });
+
+const valueEl = itemEl.createSpan({ cls: "bases-cards-redirect-property-value" });
+const value = entry.getValue(propertyId);
+if (!value || value instanceof NullValue) {
+valueEl.setText("—");
+valueEl.addClass("bases-cards-redirect-property-value--null");
+valueEl.setAttribute("aria-label", `${propertyName}: empty`);
+continue;
+}
+
+try {
+value.renderTo(valueEl, new RenderContext());
+} catch {
+valueEl.setText(value.toString());
+}
+
+const displayValue = valueEl.textContent?.trim() ?? "";
+if (!displayValue) {
+valueEl.setText("—");
+valueEl.addClass("bases-cards-redirect-property-value--null");
+valueEl.setAttribute("aria-label", `${propertyName}: empty`);
+continue;
+}
+valueEl.setAttribute("aria-label", `${propertyName}: ${displayValue}`);
 }
 
 if (!renderedAnyProperty) {
