@@ -202,12 +202,11 @@ continue;
 renderedAnyProperty = true;
 const itemEl = propertyListEl.createDiv({ cls: "bases-cards-redirect-property" });
 itemEl.createSpan({
-cls: "bases-cards-redirect-property-name",
-text: `${this.config.getDisplayName(propertyId)}:`,
-});
-itemEl.createSpan({
 cls: "bases-cards-redirect-property-value",
 text: displayValue,
+attr: {
+	"aria-label": `${this.config.getDisplayName(propertyId)}: ${displayValue}`,
+},
 });
 }
 

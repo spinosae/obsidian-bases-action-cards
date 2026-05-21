@@ -96,22 +96,20 @@ word-break: break-word;
 .bases-cards-redirect-card-properties {
 display: flex;
 flex-direction: column;
-gap: 0.35rem;
+gap: 0.25rem;
 }
 
 .bases-cards-redirect-property {
 font-size: var(--font-ui-small);
 line-height: 1.35;
-word-break: break-word;
+overflow: hidden;
 color: var(--text-muted);
-}
-
-.bases-cards-redirect-property-name {
-margin-right: 0.35rem;
-font-weight: var(--font-medium);
-color: var(--text-faint);
 }
 
 .bases-cards-redirect-property-value {
+display: block;
 color: var(--text-muted);
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
 }
