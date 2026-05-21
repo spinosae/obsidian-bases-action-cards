@@ -1,11 +1,10 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
-	"version": "1.0.0",
-	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
-	"isDesktopOnly": false
+"id": "obsidian-bases-cards-redirect",
+"name": "Bases Cards Redirect",
+"version": "1.0.0",
+"minAppVersion": "1.10.0",
+"description": "A custom Bases cards-style view with configurable click redirection via a link property.",
+"author": "spinosae",
+"authorUrl": "https://github.com/spinosae",
+"isDesktopOnly": false
 }
