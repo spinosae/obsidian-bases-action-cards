@@ -28,6 +28,10 @@ const IMAGE_ASPECT_RATIO_OPTION_KEY = "imageAspectRatio";
 const DEFAULT_CARD_SIZE = 240;
 const DEFAULT_IMAGE_FIT = "cover";
 const DEFAULT_IMAGE_ASPECT_RATIO = "1 / 1";
+const CARD_TITLE_PROPERTY_IDS = new Set<BasesPropertyId>([
+	"file.name",
+	"file.basename",
+]);
 const IMAGE_FIT_OPTIONS: Record<string, string> = {
 	cover: "Cover",
 	contain: "Contain",
@@ -301,14 +305,13 @@ type ParsedLink =
 | { kind: "external"; target: string };
 
 function getVisibleCardProperties(
-config: BasesViewConfig,
-imageProperty: BasesPropertyId | null,
+	config: BasesViewConfig,
+	imageProperty: BasesPropertyId | null,
 ): BasesPropertyId[] {
-return config.getOrder().filter((propertyId) => (
-propertyId !== imageProperty
-&& propertyId !== "file.name"
-&& propertyId !== "file.basename"
-));
+	return config.getOrder().filter((propertyId) => (
+		propertyId !== imageProperty
+		&& !CARD_TITLE_PROPERTY_IDS.has(propertyId)
+	));
 }
 
 function extractImageSource(
@@ -386,13 +389,13 @@ if (!value) {
 return null;
 }
 
-if (value instanceof ListValue) {
-for (let itemIndex = 0; itemIndex < value.length(); itemIndex += 1) {
-const nested = getFirstScalarValue(value.get(itemIndex));
-if (nested) {
-return nested;
-}
-}
+	if (value instanceof ListValue) {
+		for (let i = 0; i < value.length(); i += 1) {
+			const nested = getFirstScalarValue(value.get(i));
+			if (nested) {
+				return nested;
+			}
+		}
 return null;
 }
 
