@@ -6,6 +6,7 @@ BasesView,
 BasesViewConfig,
 BasesViewRegistration,
 	FileValue,
+	getLinkpath,
 	LinkValue,
 	ListValue,
 	Notice,
@@ -244,35 +245,27 @@ return renderedAnyProperty;
 private renderStringLinkValue(valueEl: HTMLElement, entry: BasesEntry, value: StringValue): boolean {
 const raw = value.toString().trim();
 if (!raw) {
-	return false;
+return false;
 }
 
-const parsedLink = parseStructuredLink(raw, false);
+const parsedLink = parseExplicitStructuredLink(raw);
 if (!parsedLink) {
-	return false;
+return false;
 }
 
 if (parsedLink.kind === "external") {
-	valueEl.createEl("a", {
-		text: raw,
-		href: parsedLink.target,
-		attr: {
-			target: "_blank",
-			rel: "noopener noreferrer",
-		},
-	});
-	return true;
+valueEl.createEl("a", {
+	text: parsedLink.displayText,
+	href: parsedLink.target,
+	attr: {
+		target: "_blank",
+		rel: "noopener noreferrer",
+	},
+});
+return true;
 }
 
-const wikilinkMatch = raw.match(/^!?\[\[([^\]]+)\]\]$/u);
-const [targetPart, displayPart] = wikilinkMatch?.[1]?.split("|") ?? [];
-const target = targetPart?.trim() ?? "";
-const display = (displayPart?.trim() || target) ?? "";
-if (!target) {
-	return false;
-}
-
-const linkEl = valueEl.createEl("a", { text: display });
+const linkEl = valueEl.createEl("a", { text: parsedLink.displayText });
 linkEl.href = "#";
 linkEl.addEventListener("click", (event) => {
 	event.preventDefault();
@@ -367,6 +360,10 @@ type LinkTarget =
 type ParsedLink =
 | { kind: "internal"; target: string; explicit: boolean }
 | { kind: "external"; target: string };
+
+type ParsedExplicitLink =
+| { kind: "internal"; target: string; displayText: string }
+| { kind: "external"; target: string; displayText: string };
 
 function getVisibleCardProperties(
 	config: BasesViewConfig,
@@ -490,29 +487,19 @@ if (!trimmed) {
 return null;
 }
 
-const wikilinkMatch = trimmed.match(/^!?\[\[([^\]]+)\]\]$/u);
-if (wikilinkMatch?.[1]) {
-const [target] = wikilinkMatch[1].split("|");
-const normalizedTarget = target?.trim();
-if (normalizedTarget) {
-return { kind: "internal", target: normalizedTarget, explicit: true };
+const explicitLink = parseExplicitStructuredLink(trimmed);
+if (explicitLink) {
+if (explicitLink.kind === "external") {
+	return {
+		kind: "external",
+		target: explicitLink.target,
+	};
 }
-return null;
-}
-
-const markdownLinkMatch = trimmed.match(/^!?\[[^\]]*\]\(([^)]+)\)$/u);
-if (markdownLinkMatch?.[1]) {
-const normalizedTarget = markdownLinkMatch[1].trim().replace(/^<|>$/gu, "");
-if (!normalizedTarget) {
-return null;
-}
-if (isExternalOrProtocolLink(normalizedTarget)) {
 return {
-kind: "external",
-target: normalizeExternalLink(normalizedTarget),
+	kind: "internal",
+	target: explicitLink.target,
+	explicit: true,
 };
-}
-return { kind: "internal", target: normalizedTarget, explicit: true };
 }
 
 if (isExternalOrProtocolLink(trimmed)) {
@@ -530,17 +517,23 @@ return null;
 }
 
 function resolveInternalFile(app: App, link: string, sourcePath: string): TFile | null {
-const path = link.trim();
-if (!path) {
+const linktext = link.trim();
+if (!linktext) {
 return null;
 }
 
-const direct = app.vault.getAbstractFileByPath(path);
+const linkpath = getLinkpath(linktext).trim();
+if (!linkpath) {
+	const sourceFile = app.vault.getAbstractFileByPath(sourcePath);
+	return sourceFile instanceof TFile ? sourceFile : null;
+}
+
+const direct = app.vault.getAbstractFileByPath(linkpath);
 if (direct instanceof TFile) {
 return direct;
 }
 
-const destination = app.metadataCache.getFirstLinkpathDest(path, sourcePath);
+const destination = app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
 if (destination instanceof TFile) {
 return destination;
 }
@@ -557,7 +550,7 @@ return typeof value === "string" && value.trim().length > 0 ? value : fallback;
 }
 
 function isLikelyInternalPath(value: string): boolean {
-return value.includes("/") || value.includes("#") || value.endsWith(".md");
+return value.startsWith("#") || value.includes("/") || value.includes("#") || value.endsWith(".md");
 }
 
 function isExternalOrProtocolLink(value: string): boolean {
@@ -570,6 +563,99 @@ return /^[a-zA-Z][a-zA-Z0-9+.-]*:/u.test(value);
 
 function normalizeExternalLink(value: string): string {
 return value.startsWith("www.") ? `https://${value}` : value;
+}
+
+function parseExplicitStructuredLink(rawValue: string): ParsedExplicitLink | null {
+	const trimmed = rawValue.trim();
+	if (!trimmed) {
+		return null;
+	}
+
+	const wikilinkMatch = trimmed.match(/^!?\[\[([^\]]+)\]\]$/u);
+	if (wikilinkMatch?.[1]) {
+		const [targetPart, displayPart] = splitLinkAndDisplay(wikilinkMatch[1], "|");
+		if (!targetPart) {
+			return null;
+		}
+		if (isExternalOrProtocolLink(targetPart)) {
+			const normalizedTarget = normalizeExternalLink(targetPart);
+			return {
+				kind: "external",
+				target: normalizedTarget,
+				displayText: displayPart || normalizedTarget,
+			};
+		}
+		return {
+			kind: "internal",
+			target: targetPart,
+			displayText: displayPart || targetPart,
+		};
+	}
+
+	const markdownLinkMatch = trimmed.match(/^!?\[([^\]]*)\]\((.+)\)$/u);
+	if (markdownLinkMatch) {
+		const [, rawLabel = "", rawDestination = ""] = markdownLinkMatch;
+		const label = rawLabel.trim();
+		const destination = parseMarkdownLinkDestination(rawDestination);
+		if (!destination) {
+			return null;
+		}
+		if (isExternalOrProtocolLink(destination)) {
+			const normalizedTarget = normalizeExternalLink(destination);
+			return {
+				kind: "external",
+				target: normalizedTarget,
+				displayText: label || normalizedTarget,
+			};
+		}
+		return {
+			kind: "internal",
+			target: destination,
+			displayText: label || destination,
+		};
+	}
+
+	if (isExternalOrProtocolLink(trimmed)) {
+		const normalizedTarget = normalizeExternalLink(trimmed);
+		return {
+			kind: "external",
+			target: normalizedTarget,
+			displayText: normalizedTarget,
+		};
+	}
+
+	return null;
+}
+
+function splitLinkAndDisplay(value: string, delimiter: string): [target: string, display: string] {
+	const delimiterIndex = value.indexOf(delimiter);
+	if (delimiterIndex === -1) {
+		const target = value.trim();
+		return [target, target];
+	}
+
+	const target = value.slice(0, delimiterIndex).trim();
+	const display = value.slice(delimiterIndex + 1).trim();
+	return [target, display || target];
+}
+
+function parseMarkdownLinkDestination(value: string): string | null {
+	const trimmed = value.trim();
+	if (!trimmed) {
+		return null;
+	}
+
+	if (trimmed.startsWith("<")) {
+		const endIndex = trimmed.indexOf(">");
+		if (endIndex <= 1) {
+			return null;
+		}
+		return trimmed.slice(1, endIndex).trim();
+	}
+
+	const firstWhitespace = trimmed.search(/\s/u);
+	const destination = firstWhitespace === -1 ? trimmed : trimmed.slice(0, firstWhitespace);
+	return destination.trim() || null;
 }
 
 function isValidExternalLink(value: string): boolean {
