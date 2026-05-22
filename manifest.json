@@ -1,7 +1,7 @@
 {
-	"id": "obsidian-bases-link-cards",
-	"name": "Bases Link Cards",
-	"version": "1.0.1",
+	"id": "obsidian-bases-action-cards",
+	"name": "Bases Action Cards",
+	"version": "1.0.2",
 	"minAppVersion": "1.10.0",
 	"description": "A custom Bases cards-style view with configurable click routing via a link property.",
 	"author": "spinosae",

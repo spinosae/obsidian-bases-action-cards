@@ -21,7 +21,7 @@ Value,
 ViewOption,
 } from "obsidian";
 
-export const BASES_LINK_CARDS_VIEW_ID = "link-cards";
+export const BASES_ACTION_CARDS_VIEW_ID = "action-cards";
 
 const IMAGE_PROPERTY_OPTION_KEY = "imageProperty";
 const LINK_PROPERTY_OPTION_KEY = "linkProperty";
@@ -47,10 +47,10 @@ const IMAGE_ASPECT_RATIO_OPTIONS: Record<string, string> = {
 	"16 / 9": "16:9",
 };
 
-export const basesLinkCardsViewRegistration: BasesViewRegistration = {
-name: "Cards (link)",
-icon: "gallery-horizontal",
-factory: (controller, containerEl) => new BasesLinkCardsView(controller, containerEl),
+export const basesActionCardsViewRegistration: BasesViewRegistration = {
+name: "Action Cards",
+icon: "gallery-horizontal-end",
+factory: (controller, containerEl) => new BasesActionCardsView(controller, containerEl),
 	options: (): ViewOption[] => [
 {
 key: IMAGE_PROPERTY_OPTION_KEY,
@@ -93,8 +93,8 @@ instant: true,
 	],
 };
 
-class BasesLinkCardsView extends BasesView {
-type = BASES_LINK_CARDS_VIEW_ID;
+class BasesActionCardsView extends BasesView {
+type = BASES_ACTION_CARDS_VIEW_ID;
 
 private readonly containerEl: HTMLElement;
 
@@ -109,22 +109,22 @@ const groupedData = this.data.groupedData;
 const visibleProperties = getVisibleCardProperties(this.config, imageProperty);
 
 this.containerEl.empty();
-this.containerEl.addClass("bases-link-cards-view");
+this.containerEl.addClass("bases-action-cards-view");
 this.applyViewOptions(this.config);
 
 for (const group of groupedData) {
 const sectionEl = this.containerEl.createDiv({
-cls: "bases-link-cards-section",
+cls: "bases-action-cards-section",
 });
 
 if (group.hasKey()) {
 sectionEl.createEl("h3", {
-cls: "bases-link-cards-group-title",
+cls: "bases-action-cards-group-title",
 text: group.key?.toString() ?? "",
 });
 }
 
-const gridEl = sectionEl.createDiv({ cls: "bases-link-cards-grid" });
+const gridEl = sectionEl.createDiv({ cls: "bases-action-cards-grid" });
 for (const entry of group.entries) {
 this.renderCard(gridEl, entry, visibleProperties, imageProperty);
 }
@@ -139,10 +139,10 @@ config.get(IMAGE_ASPECT_RATIO_OPTION_KEY),
 DEFAULT_IMAGE_ASPECT_RATIO,
 );
 
-this.containerEl.style.setProperty("--bases-link-cards-card-size", `${cardSize}px`);
-this.containerEl.style.setProperty("--bases-link-cards-image-fit", imageFit);
+this.containerEl.style.setProperty("--bases-action-cards-card-size", `${cardSize}px`);
+this.containerEl.style.setProperty("--bases-action-cards-image-fit", imageFit);
 this.containerEl.style.setProperty(
-"--bases-link-cards-image-aspect-ratio",
+"--bases-action-cards-image-aspect-ratio",
 imageAspectRatio,
 );
 }
@@ -153,7 +153,7 @@ entry: BasesEntry,
 visibleProperties: BasesPropertyId[],
 imageProperty: BasesPropertyId | null,
 ): void {
-const cardEl = gridEl.createDiv({ cls: "bases-link-cards-card" });
+const cardEl = gridEl.createDiv({ cls: "bases-action-cards-card" });
 cardEl.tabIndex = 0;
 cardEl.setAttribute("role", "button");
 cardEl.setAttribute("aria-label", `Open ${entry.file.basename}`);
@@ -174,14 +174,14 @@ void this.openCardTarget(entry);
 
 this.renderCardMedia(cardEl, entry, imageProperty);
 
-const bodyEl = cardEl.createDiv({ cls: "bases-link-cards-card-body" });
+const bodyEl = cardEl.createDiv({ cls: "bases-action-cards-card-body" });
 bodyEl.createEl("div", {
-cls: "bases-link-cards-card-title",
+cls: "bases-action-cards-card-title",
 text: entry.file.basename,
 });
 
 const renderedAnyProperty = this.renderVisibleProperties(bodyEl, entry, visibleProperties);
-cardEl.toggleClass("bases-link-cards-card--properties", renderedAnyProperty);
+cardEl.toggleClass("bases-action-cards-card--properties", renderedAnyProperty);
 }
 
 private renderVisibleProperties(
@@ -193,23 +193,23 @@ if (visibleProperties.length === 0) {
 return false;
 }
 
-const propertyListEl = bodyEl.createDiv({ cls: "bases-link-cards-card-properties" });
+const propertyListEl = bodyEl.createDiv({ cls: "bases-action-cards-card-properties" });
 let renderedAnyProperty = false;
 
 for (const propertyId of visibleProperties) {
 renderedAnyProperty = true;
 const propertyName = this.config.getDisplayName(propertyId);
-const itemEl = propertyListEl.createDiv({ cls: "bases-link-cards-property" });
+const itemEl = propertyListEl.createDiv({ cls: "bases-action-cards-property" });
 itemEl.createSpan({
-cls: "bases-link-cards-property-name",
+cls: "bases-action-cards-property-name",
 text: propertyName,
 });
 
-const valueEl = itemEl.createSpan({ cls: "bases-link-cards-property-value" });
+const valueEl = itemEl.createSpan({ cls: "bases-action-cards-property-value" });
 const value = entry.getValue(propertyId);
 if (!value || value instanceof NullValue) {
 valueEl.setText("—");
-valueEl.addClass("bases-link-cards-property-value--null");
+valueEl.addClass("bases-action-cards-property-value--null");
 valueEl.setAttribute("aria-label", `${propertyName}: empty`);
 continue;
 }
@@ -229,7 +229,7 @@ valueEl.setText(value.toString());
 const displayValue = valueEl.textContent?.trim() ?? "";
 if (!displayValue) {
 valueEl.setText("—");
-valueEl.addClass("bases-link-cards-property-value--null");
+valueEl.addClass("bases-action-cards-property-value--null");
 valueEl.setAttribute("aria-label", `${propertyName}: empty`);
 continue;
 }
@@ -285,10 +285,10 @@ if (!imageProperty) {
 return;
 }
 
-const mediaEl = cardEl.createDiv({ cls: "bases-link-cards-card-media" });
+const mediaEl = cardEl.createDiv({ cls: "bases-action-cards-card-media" });
 const mediaSource = extractImageSource(this.app, entry, entry.getValue(imageProperty));
 if (!mediaSource) {
-mediaEl.addClass("bases-link-cards-card-media--empty");
+mediaEl.addClass("bases-action-cards-card-media--empty");
 return;
 }
 
@@ -298,7 +298,7 @@ return;
 }
 
 const imageEl = mediaEl.createEl("img", {
-cls: "bases-link-cards-card-image",
+cls: "bases-action-cards-card-image",
 attr: {
 src: mediaSource.value,
 alt: `${entry.file.basename} cover image`,
@@ -307,7 +307,7 @@ loading: "lazy",
 });
 imageEl.addEventListener("error", () => {
 imageEl.remove();
-mediaEl.addClass("bases-link-cards-card-media--empty");
+mediaEl.addClass("bases-action-cards-card-media--empty");
 });
 }
 

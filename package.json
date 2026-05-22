@@ -1,6 +1,6 @@
 {
-	"name": "obsidian-bases-link-cards",
-	"version": "1.0.1",
+	"name": "obsidian-bases-action-cards",
+	"version": "1.0.2",
 	"description": "Obsidian Bases cards view with customizable card click routing",
 	"main": "main.js",
 	"type": "module",
