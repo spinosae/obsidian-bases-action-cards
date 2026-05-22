@@ -11,6 +11,7 @@ BasesViewRegistration,
 	ListValue,
 	Notice,
 NullValue,
+	parseLinktext,
 QueryController,
 RenderContext,
 StringValue,
@@ -524,6 +525,10 @@ return null;
 
 const linkpath = getLinkpath(linktext).trim();
 if (!linkpath) {
+	const { subpath } = parseLinktext(linktext);
+	if (!subpath) {
+		return null;
+	}
 	const sourceFile = app.vault.getAbstractFileByPath(sourcePath);
 	return sourceFile instanceof TFile ? sourceFile : null;
 }
