@@ -1,10 +1,10 @@
-# Bases cards redirect
+# Bases link cards
 
 A custom Obsidian Bases view that mimics the built-in cards layout while letting you customize card click behavior.
 
 ## What it does
 
-This plugin registers a Bases view named **Cards (redirect)**.
+This plugin registers a Bases view named **Cards (link)**.
 
 It behaves like cards view, with these configurable options:
 
@@ -44,7 +44,7 @@ When an image property is configured but a note has no image value, the card sti
 
 1. Build and install the plugin in your vault.
 2. Open a `.base` file.
-3. Select **Cards (redirect)** in the view picker.
+3. Select **Cards (link)** in the view picker.
 4. In view options, set:
    - **Image property** (optional)
    - **Link property** (optional)
@@ -71,7 +71,7 @@ Manual install for testing:
 Copy `main.js`, `manifest.json`, and `styles.css` to:
 
 ```text
-<Vault>/.obsidian/plugins/obsidian-bases-cards-redirect/
+<Vault>/.obsidian/plugins/obsidian-bases-link-cards/
 ```
 
 Then reload Obsidian and enable the plugin in **Settings → Community plugins**.

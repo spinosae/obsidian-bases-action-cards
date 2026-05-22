@@ -1,19 +1,19 @@
 import { Plugin } from "obsidian";
 import {
-BASES_CARDS_REDIRECT_VIEW_ID,
-basesCardsRedirectViewRegistration,
+BASES_LINK_CARDS_VIEW_ID,
+basesLinkCardsViewRegistration,
 } from "./view";
 
-export default class BasesCardsRedirectPlugin extends Plugin {
+export default class BasesLinkCardsPlugin extends Plugin {
 async onload(): Promise<void> {
 const registered = this.registerBasesView(
-BASES_CARDS_REDIRECT_VIEW_ID,
-basesCardsRedirectViewRegistration,
+BASES_LINK_CARDS_VIEW_ID,
+basesLinkCardsViewRegistration,
 );
 
 if (!registered) {
 console.warn(
-"[obsidian-bases-cards-redirect] Bases is not enabled; custom view was not registered.",
+"[obsidian-bases-link-cards] Bases is not enabled; custom view was not registered.",
 );
 }
 }

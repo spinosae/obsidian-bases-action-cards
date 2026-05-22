@@ -1,10 +1,10 @@
 {
-"id": "obsidian-bases-cards-redirect",
-"name": "Bases Cards Redirect",
-"version": "1.0.0",
-"minAppVersion": "1.10.0",
-"description": "A custom Bases cards-style view with configurable click redirection via a link property.",
-"author": "spinosae",
-"authorUrl": "https://github.com/spinosae",
-"isDesktopOnly": false
+	"id": "obsidian-bases-link-cards",
+	"name": "Bases Link Cards",
+	"version": "1.0.1",
+	"minAppVersion": "1.10.0",
+	"description": "A custom Bases cards-style view with configurable click routing via a link property.",
+	"author": "spinosae",
+	"authorUrl": "https://github.com/spinosae",
+	"isDesktopOnly": false
 }

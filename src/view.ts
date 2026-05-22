@@ -21,7 +21,7 @@ Value,
 ViewOption,
 } from "obsidian";
 
-export const BASES_CARDS_REDIRECT_VIEW_ID = "cards-redirect";
+export const BASES_LINK_CARDS_VIEW_ID = "link-cards";
 
 const IMAGE_PROPERTY_OPTION_KEY = "imageProperty";
 const LINK_PROPERTY_OPTION_KEY = "linkProperty";
@@ -47,10 +47,10 @@ const IMAGE_ASPECT_RATIO_OPTIONS: Record<string, string> = {
 	"16 / 9": "16:9",
 };
 
-export const basesCardsRedirectViewRegistration: BasesViewRegistration = {
-name: "Cards (redirect)",
+export const basesLinkCardsViewRegistration: BasesViewRegistration = {
+name: "Cards (link)",
 icon: "gallery-horizontal",
-factory: (controller, containerEl) => new BasesCardsRedirectView(controller, containerEl),
+factory: (controller, containerEl) => new BasesLinkCardsView(controller, containerEl),
 	options: (): ViewOption[] => [
 {
 key: IMAGE_PROPERTY_OPTION_KEY,
@@ -93,8 +93,8 @@ instant: true,
 	],
 };
 
-class BasesCardsRedirectView extends BasesView {
-type = BASES_CARDS_REDIRECT_VIEW_ID;
+class BasesLinkCardsView extends BasesView {
+type = BASES_LINK_CARDS_VIEW_ID;
 
 private readonly containerEl: HTMLElement;
 
@@ -109,22 +109,22 @@ const groupedData = this.data.groupedData;
 const visibleProperties = getVisibleCardProperties(this.config, imageProperty);
 
 this.containerEl.empty();
-this.containerEl.addClass("bases-cards-redirect-view");
+this.containerEl.addClass("bases-link-cards-view");
 this.applyViewOptions(this.config);
 
 for (const group of groupedData) {
 const sectionEl = this.containerEl.createDiv({
-cls: "bases-cards-redirect-section",
+cls: "bases-link-cards-section",
 });
 
 if (group.hasKey()) {
 sectionEl.createEl("h3", {
-cls: "bases-cards-redirect-group-title",
+cls: "bases-link-cards-group-title",
 text: group.key?.toString() ?? "",
 });
 }
 
-const gridEl = sectionEl.createDiv({ cls: "bases-cards-redirect-grid" });
+const gridEl = sectionEl.createDiv({ cls: "bases-link-cards-grid" });
 for (const entry of group.entries) {
 this.renderCard(gridEl, entry, visibleProperties, imageProperty);
 }
@@ -139,10 +139,10 @@ config.get(IMAGE_ASPECT_RATIO_OPTION_KEY),
 DEFAULT_IMAGE_ASPECT_RATIO,
 );
 
-this.containerEl.style.setProperty("--bases-cards-redirect-card-size", `${cardSize}px`);
-this.containerEl.style.setProperty("--bases-cards-redirect-image-fit", imageFit);
+this.containerEl.style.setProperty("--bases-link-cards-card-size", `${cardSize}px`);
+this.containerEl.style.setProperty("--bases-link-cards-image-fit", imageFit);
 this.containerEl.style.setProperty(
-"--bases-cards-redirect-image-aspect-ratio",
+"--bases-link-cards-image-aspect-ratio",
 imageAspectRatio,
 );
 }
@@ -153,7 +153,7 @@ entry: BasesEntry,
 visibleProperties: BasesPropertyId[],
 imageProperty: BasesPropertyId | null,
 ): void {
-const cardEl = gridEl.createDiv({ cls: "bases-cards-redirect-card" });
+const cardEl = gridEl.createDiv({ cls: "bases-link-cards-card" });
 cardEl.tabIndex = 0;
 cardEl.setAttribute("role", "button");
 cardEl.setAttribute("aria-label", `Open ${entry.file.basename}`);
@@ -174,14 +174,14 @@ void this.openCardTarget(entry);
 
 this.renderCardMedia(cardEl, entry, imageProperty);
 
-const bodyEl = cardEl.createDiv({ cls: "bases-cards-redirect-card-body" });
+const bodyEl = cardEl.createDiv({ cls: "bases-link-cards-card-body" });
 bodyEl.createEl("div", {
-cls: "bases-cards-redirect-card-title",
+cls: "bases-link-cards-card-title",
 text: entry.file.basename,
 });
 
 const renderedAnyProperty = this.renderVisibleProperties(bodyEl, entry, visibleProperties);
-cardEl.toggleClass("bases-cards-redirect-card--properties", renderedAnyProperty);
+cardEl.toggleClass("bases-link-cards-card--properties", renderedAnyProperty);
 }
 
 private renderVisibleProperties(
@@ -193,23 +193,23 @@ if (visibleProperties.length === 0) {
 return false;
 }
 
-const propertyListEl = bodyEl.createDiv({ cls: "bases-cards-redirect-card-properties" });
+const propertyListEl = bodyEl.createDiv({ cls: "bases-link-cards-card-properties" });
 let renderedAnyProperty = false;
 
 for (const propertyId of visibleProperties) {
 renderedAnyProperty = true;
 const propertyName = this.config.getDisplayName(propertyId);
-const itemEl = propertyListEl.createDiv({ cls: "bases-cards-redirect-property" });
+const itemEl = propertyListEl.createDiv({ cls: "bases-link-cards-property" });
 itemEl.createSpan({
-cls: "bases-cards-redirect-property-name",
+cls: "bases-link-cards-property-name",
 text: propertyName,
 });
 
-const valueEl = itemEl.createSpan({ cls: "bases-cards-redirect-property-value" });
+const valueEl = itemEl.createSpan({ cls: "bases-link-cards-property-value" });
 const value = entry.getValue(propertyId);
 if (!value || value instanceof NullValue) {
 valueEl.setText("—");
-valueEl.addClass("bases-cards-redirect-property-value--null");
+valueEl.addClass("bases-link-cards-property-value--null");
 valueEl.setAttribute("aria-label", `${propertyName}: empty`);
 continue;
 }
@@ -229,7 +229,7 @@ valueEl.setText(value.toString());
 const displayValue = valueEl.textContent?.trim() ?? "";
 if (!displayValue) {
 valueEl.setText("—");
-valueEl.addClass("bases-cards-redirect-property-value--null");
+valueEl.addClass("bases-link-cards-property-value--null");
 valueEl.setAttribute("aria-label", `${propertyName}: empty`);
 continue;
 }
@@ -285,10 +285,10 @@ if (!imageProperty) {
 return;
 }
 
-const mediaEl = cardEl.createDiv({ cls: "bases-cards-redirect-card-media" });
+const mediaEl = cardEl.createDiv({ cls: "bases-link-cards-card-media" });
 const mediaSource = extractImageSource(this.app, entry, entry.getValue(imageProperty));
 if (!mediaSource) {
-mediaEl.addClass("bases-cards-redirect-card-media--empty");
+mediaEl.addClass("bases-link-cards-card-media--empty");
 return;
 }
 
@@ -298,7 +298,7 @@ return;
 }
 
 const imageEl = mediaEl.createEl("img", {
-cls: "bases-cards-redirect-card-image",
+cls: "bases-link-cards-card-image",
 attr: {
 src: mediaSource.value,
 alt: `${entry.file.basename} cover image`,
@@ -307,7 +307,7 @@ loading: "lazy",
 });
 imageEl.addEventListener("error", () => {
 imageEl.remove();
-mediaEl.addClass("bases-cards-redirect-card-media--empty");
+mediaEl.addClass("bases-link-cards-card-media--empty");
 });
 }
 
