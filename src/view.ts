@@ -525,8 +525,8 @@ return null;
 
 const linkpath = getLinkpath(linktext).trim();
 if (!linkpath) {
-	const { subpath } = parseLinktext(linktext);
-	if (!subpath) {
+	const parsedLink = parseLinktext(linktext);
+	if (!parsedLink.subpath) {
 		return null;
 	}
 	const sourceFile = app.vault.getAbstractFileByPath(sourcePath);
@@ -555,7 +555,7 @@ return typeof value === "string" && value.trim().length > 0 ? value : fallback;
 }
 
 function isLikelyInternalPath(value: string): boolean {
-return value.startsWith("#") || value.includes("/") || value.includes("#") || value.endsWith(".md");
+return value.includes("/") || value.includes("#") || value.endsWith(".md");
 }
 
 function isExternalOrProtocolLink(value: string): boolean {
@@ -634,13 +634,12 @@ function parseExplicitStructuredLink(rawValue: string): ParsedExplicitLink | nul
 
 function splitLinkAndDisplay(value: string, delimiter: string): [target: string, display: string] {
 	const delimiterIndex = value.indexOf(delimiter);
-	if (delimiterIndex === -1) {
-		const target = value.trim();
-		return [target, target];
-	}
-
-	const target = value.slice(0, delimiterIndex).trim();
-	const display = value.slice(delimiterIndex + 1).trim();
+	const target = delimiterIndex === -1
+		? value.trim()
+		: value.slice(0, delimiterIndex).trim();
+	const display = delimiterIndex === -1
+		? ""
+		: value.slice(delimiterIndex + 1).trim();
 	return [target, display || target];
 }
 
