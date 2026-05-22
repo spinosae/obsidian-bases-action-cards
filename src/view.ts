@@ -214,7 +214,7 @@ valueEl.setAttribute("aria-label", `${propertyName}: empty`);
 continue;
 }
 
-if (value instanceof StringValue && this.renderStringLinkValue(valueEl, entry, value)) {
+if (this.renderLinkLikeValue(valueEl, entry, value)) {
 const displayValue = valueEl.textContent?.trim() ?? "";
 valueEl.setAttribute("aria-label", `${propertyName}: ${displayValue}`);
 continue;
@@ -243,13 +243,13 @@ propertyListEl.remove();
 return renderedAnyProperty;
 }
 
-private renderStringLinkValue(valueEl: HTMLElement, entry: BasesEntry, value: StringValue): boolean {
-const raw = value.toString().trim();
-if (!raw) {
+private renderLinkLikeValue(valueEl: HTMLElement, entry: BasesEntry, value: Value): boolean {
+const scalarValue = getSingleScalarValue(value);
+if (!scalarValue) {
 return false;
 }
 
-const parsedLink = parseExplicitStructuredLink(raw);
+const parsedLink = parseExplicitStructuredLink(scalarValue.raw);
 if (!parsedLink) {
 return false;
 }
@@ -480,6 +480,19 @@ return { raw, kind: "string" };
 }
 
 return { raw, kind: "other" };
+}
+
+function getSingleScalarValue(value: Value): ScalarValue | null {
+	if (value instanceof ListValue) {
+		if (value.length() !== 1) {
+			return null;
+		}
+
+		const nestedValue = value.get(0);
+		return nestedValue ? getSingleScalarValue(nestedValue) : null;
+	}
+
+	return getFirstScalarValue(value);
 }
 
 function parseStructuredLink(rawValue: string, allowBareInternalPath: boolean): ParsedLink | null {
