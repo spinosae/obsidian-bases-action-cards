@@ -94,7 +94,9 @@ font-size: var(--font-ui-medium);
 font-weight: var(--font-semibold);
 line-height: 1.35;
 color: var(--text-normal);
-word-break: break-word;
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
 }
 
 .bases-cards-redirect-card-properties {
@@ -122,6 +124,13 @@ display: block;
 font-size: var(--font-ui-small);
 line-height: 1.35;
 color: var(--text-muted);
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
+}
+
+.bases-cards-redirect-property-value a {
+display: block;
 overflow: hidden;
 text-overflow: ellipsis;
 white-space: nowrap;

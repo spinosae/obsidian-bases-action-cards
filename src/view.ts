@@ -212,6 +212,12 @@ valueEl.setAttribute("aria-label", `${propertyName}: empty`);
 continue;
 }
 
+if (value instanceof StringValue && this.renderStringLinkValue(valueEl, entry, value)) {
+const displayValue = valueEl.textContent?.trim() ?? "";
+valueEl.setAttribute("aria-label", `${propertyName}: ${displayValue}`);
+continue;
+}
+
 try {
 value.renderTo(valueEl, new RenderContext());
 } catch {
@@ -233,6 +239,47 @@ propertyListEl.remove();
 }
 
 return renderedAnyProperty;
+}
+
+private renderStringLinkValue(valueEl: HTMLElement, entry: BasesEntry, value: StringValue): boolean {
+const raw = value.toString().trim();
+if (!raw) {
+	return false;
+}
+
+const parsedLink = parseStructuredLink(raw, false);
+if (!parsedLink) {
+	return false;
+}
+
+if (parsedLink.kind === "external") {
+	valueEl.createEl("a", {
+		text: raw,
+		href: parsedLink.target,
+		attr: {
+			target: "_blank",
+			rel: "noopener noreferrer",
+		},
+	});
+	return true;
+}
+
+const wikilinkMatch = raw.match(/^!?\[\[([^\]]+)\]\]$/u);
+const [targetPart, displayPart] = wikilinkMatch?.[1]?.split("|") ?? [];
+const target = targetPart?.trim() ?? "";
+const display = (displayPart?.trim() || target) ?? "";
+if (!target) {
+	return false;
+}
+
+const linkEl = valueEl.createEl("a", { text: display });
+linkEl.href = "#";
+linkEl.addEventListener("click", (event) => {
+	event.preventDefault();
+	event.stopPropagation();
+	void this.app.workspace.openLinkText(parsedLink.target, entry.file.path, false);
+});
+return true;
 }
 
 private renderCardMedia(
