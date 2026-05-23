@@ -1,24 +1,24 @@
 import {
-App,
-BasesEntry,
-BasesPropertyId,
-BasesView,
-BasesViewConfig,
-BasesViewRegistration,
+	App,
+	BasesEntry,
+	BasesPropertyId,
+	BasesView,
+	BasesViewConfig,
+	BasesViewRegistration,
 	FileValue,
 	getLinkpath,
 	LinkValue,
 	ListValue,
 	Notice,
-NullValue,
+	NullValue,
 	parseLinktext,
-QueryController,
-RenderContext,
-StringValue,
-TFile,
-UrlValue,
-Value,
-ViewOption,
+	QueryController,
+	RenderContext,
+	StringValue,
+	TFile,
+	UrlValue,
+	Value,
+	ViewOption,
 } from "obsidian";
 
 export const BASES_ACTION_CARDS_VIEW_ID = "action-cards";
@@ -32,6 +32,12 @@ const IMAGE_ASPECT_RATIO_OPTION_KEY = "imageAspectRatio";
 const DEFAULT_CARD_SIZE = 240;
 const DEFAULT_IMAGE_FIT = "cover";
 const DEFAULT_IMAGE_ASPECT_RATIO = "1 / 1";
+const BLOCKED_EXTERNAL_PROTOCOLS = new Set([
+	"javascript:",
+	"data:",
+	"vbscript:",
+	"file:",
+]);
 const CARD_TITLE_PROPERTY_IDS = new Set<BasesPropertyId>([
 	"file.name",
 	"file.basename",
@@ -48,39 +54,39 @@ const IMAGE_ASPECT_RATIO_OPTIONS: Record<string, string> = {
 };
 
 export const basesActionCardsViewRegistration: BasesViewRegistration = {
-name: "Action Cards",
-icon: "gallery-horizontal-end",
-factory: (controller, containerEl) => new BasesActionCardsView(controller, containerEl),
+	name: "Action Cards",
+	icon: "gallery-horizontal-end",
+	factory: (controller, containerEl) =>
+		new BasesActionCardsView(controller, containerEl),
 	options: (): ViewOption[] => [
-{
-key: IMAGE_PROPERTY_OPTION_KEY,
-type: "property",
-displayName: "Image property",
-placeholder: "Select a property",
-},
-{
-key: LINK_PROPERTY_OPTION_KEY,
-type: "property",
-displayName: "Link property",
-placeholder: "Select a property",
-},
-{
-key: CARD_SIZE_OPTION_KEY,
-type: "slider",
-displayName: "Card size",
-default: DEFAULT_CARD_SIZE,
-min: 180,
-max: 360,
-step: 20,
-instant: true,
-},
+		{
+			key: IMAGE_PROPERTY_OPTION_KEY,
+			type: "property",
+			displayName: "Image property",
+			placeholder: "Select a property",
+		},
+		{
+			key: LINK_PROPERTY_OPTION_KEY,
+			type: "property",
+			displayName: "Link property",
+			placeholder: "Select a property",
+		},
+		{
+			key: CARD_SIZE_OPTION_KEY,
+			type: "slider",
+			displayName: "Card size",
+			default: DEFAULT_CARD_SIZE,
+			min: 180,
+			max: 360,
+			step: 20,
+			instant: true,
+		},
 		{
 			key: IMAGE_FIT_OPTION_KEY,
 			type: "dropdown",
 			displayName: "Image fit",
 			default: DEFAULT_IMAGE_FIT,
 			options: IMAGE_FIT_OPTIONS,
-			shouldHide: (config) => !config.getAsPropertyId(IMAGE_PROPERTY_OPTION_KEY),
 		},
 		{
 			key: IMAGE_ASPECT_RATIO_OPTION_KEY,
@@ -88,368 +94,470 @@ instant: true,
 			displayName: "Image aspect ratio",
 			default: DEFAULT_IMAGE_ASPECT_RATIO,
 			options: IMAGE_ASPECT_RATIO_OPTIONS,
-			shouldHide: (config) => !config.getAsPropertyId(IMAGE_PROPERTY_OPTION_KEY),
 		},
 	],
 };
 
 class BasesActionCardsView extends BasesView {
-type = BASES_ACTION_CARDS_VIEW_ID;
+	type = BASES_ACTION_CARDS_VIEW_ID;
 
-private readonly containerEl: HTMLElement;
+	private readonly containerEl: HTMLElement;
 
-constructor(controller: QueryController, containerEl: HTMLElement) {
-super(controller);
-this.containerEl = containerEl;
-}
+	constructor(controller: QueryController, parentEl: HTMLElement) {
+		super(controller);
+		this.containerEl = parentEl.createDiv({
+			cls: "bases-action-cards-view",
+		});
+	}
 
-onDataUpdated(): void {
-const imageProperty = this.config.getAsPropertyId(IMAGE_PROPERTY_OPTION_KEY);
-const groupedData = this.data.groupedData;
-const visibleProperties = getVisibleCardProperties(this.config, imageProperty);
+	onDataUpdated(): void {
+		const imageProperty = this.config.getAsPropertyId(
+			IMAGE_PROPERTY_OPTION_KEY,
+		);
+		const groupedData = this.data.groupedData;
+		const visibleProperties = getVisibleCardProperties(
+			this.config,
+			imageProperty,
+		);
 
-this.containerEl.empty();
-this.containerEl.addClass("bases-action-cards-view");
-this.applyViewOptions(this.config);
+		this.containerEl.empty();
+		this.applyViewOptions(this.config);
 
-for (const group of groupedData) {
-const sectionEl = this.containerEl.createDiv({
-cls: "bases-action-cards-section",
-});
+		for (const group of groupedData) {
+			const sectionEl = this.containerEl.createDiv({
+				cls: "bases-action-cards-section",
+			});
 
-if (group.hasKey()) {
-sectionEl.createEl("h3", {
-cls: "bases-action-cards-group-title",
-text: group.key?.toString() ?? "",
-});
-}
+			if (group.hasKey()) {
+				sectionEl.createEl("h3", {
+					cls: "bases-action-cards-group-title",
+					text: group.key?.toString() ?? "",
+				});
+			}
 
-const gridEl = sectionEl.createDiv({ cls: "bases-action-cards-grid" });
-for (const entry of group.entries) {
-this.renderCard(gridEl, entry, visibleProperties, imageProperty);
-}
-}
-}
+			const gridEl = sectionEl.createDiv({
+				cls: "bases-action-cards-grid",
+			});
+			for (const entry of group.entries) {
+				this.renderCard(
+					gridEl,
+					entry,
+					visibleProperties,
+					imageProperty,
+				);
+			}
+		}
+	}
 
-private applyViewOptions(config: BasesViewConfig): void {
-const cardSize = getNumberOption(config.get(CARD_SIZE_OPTION_KEY), DEFAULT_CARD_SIZE);
-const imageFit = getStringOption(config.get(IMAGE_FIT_OPTION_KEY), DEFAULT_IMAGE_FIT);
-const imageAspectRatio = getStringOption(
-config.get(IMAGE_ASPECT_RATIO_OPTION_KEY),
-DEFAULT_IMAGE_ASPECT_RATIO,
-);
+	private applyViewOptions(config: BasesViewConfig): void {
+		const cardSize = getNumberOption(
+			config.get(CARD_SIZE_OPTION_KEY),
+			DEFAULT_CARD_SIZE,
+		);
+		const imageFit = getStringOptionFromAllowedValues(
+			config.get(IMAGE_FIT_OPTION_KEY),
+			DEFAULT_IMAGE_FIT,
+			Object.keys(IMAGE_FIT_OPTIONS),
+		);
+		const imageAspectRatio = getStringOptionFromAllowedValues(
+			config.get(IMAGE_ASPECT_RATIO_OPTION_KEY),
+			DEFAULT_IMAGE_ASPECT_RATIO,
+			Object.keys(IMAGE_ASPECT_RATIO_OPTIONS),
+		);
 
-this.containerEl.style.setProperty("--bases-action-cards-card-size", `${cardSize}px`);
-this.containerEl.style.setProperty("--bases-action-cards-image-fit", imageFit);
-this.containerEl.style.setProperty(
-"--bases-action-cards-image-aspect-ratio",
-imageAspectRatio,
-);
-}
+		this.containerEl.style.setProperty(
+			"--bases-action-cards-card-size",
+			`${cardSize}px`,
+		);
+		this.containerEl.style.setProperty(
+			"--bases-action-cards-image-fit",
+			imageFit,
+		);
+		this.containerEl.style.setProperty(
+			"--bases-action-cards-image-aspect-ratio",
+			imageAspectRatio,
+		);
+	}
 
-private renderCard(
-gridEl: HTMLElement,
-entry: BasesEntry,
-visibleProperties: BasesPropertyId[],
-imageProperty: BasesPropertyId | null,
-): void {
-const cardEl = gridEl.createDiv({ cls: "bases-action-cards-card" });
-cardEl.tabIndex = 0;
-cardEl.setAttribute("role", "button");
-cardEl.setAttribute("aria-label", `Open ${entry.file.basename}`);
+	private renderCard(
+		gridEl: HTMLElement,
+		entry: BasesEntry,
+		visibleProperties: BasesPropertyId[],
+		imageProperty: BasesPropertyId | null,
+	): void {
+		const cardEl = gridEl.createDiv({ cls: "bases-action-cards-card" });
+		cardEl.tabIndex = 0;
+		cardEl.setAttribute("role", "button");
+		cardEl.setAttribute("aria-label", `Open ${entry.file.basename}`);
 
-cardEl.addEventListener("click", (event) => {
-const target = event.target;
-if (target instanceof HTMLElement && target.closest("a")) {
-	return;
-}
-void this.openCardTarget(entry);
-});
-cardEl.addEventListener("keydown", (event) => {
-if (event.key === "Enter" || event.key === " ") {
-event.preventDefault();
-void this.openCardTarget(entry);
-}
-});
+		cardEl.addEventListener("click", (event) => {
+			const target = event.target;
+			if (target instanceof HTMLElement && target.closest("a")) {
+				return;
+			}
+			void this.openCardTarget(entry);
+		});
+		cardEl.addEventListener("keydown", (event) => {
+			if (event.key === "Enter" || event.key === " ") {
+				event.preventDefault();
+				void this.openCardTarget(entry);
+			}
+		});
 
-this.renderCardMedia(cardEl, entry, imageProperty);
+		this.renderCardMedia(cardEl, entry, imageProperty);
 
-const bodyEl = cardEl.createDiv({ cls: "bases-action-cards-card-body" });
-bodyEl.createEl("div", {
-cls: "bases-action-cards-card-title",
-text: entry.file.basename,
-});
+		const bodyEl = cardEl.createDiv({
+			cls: "bases-action-cards-card-body",
+		});
+		bodyEl.createEl("div", {
+			cls: "bases-action-cards-card-title",
+			text: entry.file.basename,
+		});
 
-const renderedAnyProperty = this.renderVisibleProperties(bodyEl, entry, visibleProperties);
-cardEl.toggleClass("bases-action-cards-card--properties", renderedAnyProperty);
-}
+		const renderedAnyProperty = this.renderVisibleProperties(
+			bodyEl,
+			entry,
+			visibleProperties,
+		);
+		cardEl.toggleClass(
+			"bases-action-cards-card--properties",
+			renderedAnyProperty,
+		);
+	}
 
-private renderVisibleProperties(
-bodyEl: HTMLElement,
-entry: BasesEntry,
-visibleProperties: BasesPropertyId[],
-): boolean {
-if (visibleProperties.length === 0) {
-return false;
-}
+	private renderVisibleProperties(
+		bodyEl: HTMLElement,
+		entry: BasesEntry,
+		visibleProperties: BasesPropertyId[],
+	): boolean {
+		if (visibleProperties.length === 0) {
+			return false;
+		}
 
-const propertyListEl = bodyEl.createDiv({ cls: "bases-action-cards-card-properties" });
-let renderedAnyProperty = false;
+		const propertyListEl = bodyEl.createDiv({
+			cls: "bases-action-cards-card-properties",
+		});
+		let renderedAnyProperty = false;
 
-for (const propertyId of visibleProperties) {
-renderedAnyProperty = true;
-const propertyName = this.config.getDisplayName(propertyId);
-const itemEl = propertyListEl.createDiv({ cls: "bases-action-cards-property" });
-itemEl.createSpan({
-cls: "bases-action-cards-property-name",
-text: propertyName,
-});
+		for (const propertyId of visibleProperties) {
+			renderedAnyProperty = true;
+			const propertyName = this.config.getDisplayName(propertyId);
+			const itemEl = propertyListEl.createDiv({
+				cls: "bases-action-cards-property",
+			});
+			itemEl.createSpan({
+				cls: "bases-action-cards-property-name",
+				text: propertyName,
+			});
 
-const valueEl = itemEl.createSpan({ cls: "bases-action-cards-property-value" });
-const value = entry.getValue(propertyId);
-if (!value || value instanceof NullValue) {
-valueEl.setText("—");
-valueEl.addClass("bases-action-cards-property-value--null");
-valueEl.setAttribute("aria-label", `${propertyName}: empty`);
-continue;
-}
+			const valueEl = itemEl.createSpan({
+				cls: "bases-action-cards-property-value",
+			});
+			const value = entry.getValue(propertyId);
+			if (!value || value instanceof NullValue) {
+				valueEl.setText("—");
+				valueEl.addClass("bases-action-cards-property-value--null");
+				valueEl.setAttribute("aria-label", `${propertyName}: empty`);
+				continue;
+			}
 
-if (this.renderLinkLikeValue(valueEl, entry, value)) {
-const displayValue = valueEl.textContent?.trim() ?? "";
-valueEl.setAttribute("aria-label", `${propertyName}: ${displayValue}`);
-continue;
-}
+			if (this.renderLinkLikeValue(valueEl, entry, value)) {
+				const displayValue = valueEl.textContent?.trim() ?? "";
+				valueEl.setAttribute(
+					"aria-label",
+					`${propertyName}: ${displayValue}`,
+				);
+				continue;
+			}
 
-try {
-value.renderTo(valueEl, new RenderContext());
-} catch {
-valueEl.setText(value.toString());
-}
+			try {
+				value.renderTo(valueEl, new RenderContext());
+			} catch (error) {
+				console.warn(
+					"[obsidian-bases-action-cards] Failed to render property value.",
+					error,
+				);
+				valueEl.setText(value.toString());
+			}
 
-const displayValue = valueEl.textContent?.trim() ?? "";
-if (!displayValue) {
-valueEl.setText("—");
-valueEl.addClass("bases-action-cards-property-value--null");
-valueEl.setAttribute("aria-label", `${propertyName}: empty`);
-continue;
-}
-valueEl.setAttribute("aria-label", `${propertyName}: ${displayValue}`);
-}
+			const displayValue = valueEl.textContent?.trim() ?? "";
+			if (!displayValue) {
+				valueEl.setText("—");
+				valueEl.addClass("bases-action-cards-property-value--null");
+				valueEl.setAttribute("aria-label", `${propertyName}: empty`);
+				continue;
+			}
+			valueEl.setAttribute(
+				"aria-label",
+				`${propertyName}: ${displayValue}`,
+			);
+		}
 
-if (!renderedAnyProperty) {
-propertyListEl.remove();
-}
+		if (!renderedAnyProperty) {
+			propertyListEl.remove();
+		}
 
-return renderedAnyProperty;
-}
+		return renderedAnyProperty;
+	}
 
-private renderLinkLikeValue(valueEl: HTMLElement, entry: BasesEntry, value: Value): boolean {
-const scalarValue = getSingleScalarValue(value);
-if (!scalarValue) {
-return false;
-}
+	private renderLinkLikeValue(
+		valueEl: HTMLElement,
+		entry: BasesEntry,
+		value: Value,
+	): boolean {
+		const scalarValue = getSingleScalarValue(value);
+		if (!scalarValue) {
+			return false;
+		}
 
-const parsedLink = parseExplicitStructuredLink(scalarValue.raw);
-if (!parsedLink) {
-return false;
-}
+		const parsedLink = parseExplicitStructuredLink(scalarValue.raw);
+		if (!parsedLink) {
+			return false;
+		}
 
-if (parsedLink.kind === "external") {
-valueEl.createEl("a", {
-	text: parsedLink.displayText,
-	href: parsedLink.target,
-	attr: {
-		target: "_blank",
-		rel: "noopener noreferrer",
-	},
-});
-return true;
-}
+		if (parsedLink.kind === "external") {
+			const safeExternalUrl = getSafeExternalUrl(parsedLink.target);
+			if (!safeExternalUrl) {
+				valueEl.setText(parsedLink.displayText);
+				return true;
+			}
 
-const linkEl = valueEl.createEl("a", { text: parsedLink.displayText });
-linkEl.href = "#";
-linkEl.addEventListener("click", (event) => {
-	event.preventDefault();
-	event.stopPropagation();
-	void this.app.workspace.openLinkText(parsedLink.target, entry.file.path, false);
-});
-return true;
-}
+			valueEl.createEl("a", {
+				text: parsedLink.displayText,
+				href: safeExternalUrl.href,
+				attr: {
+					target: "_blank",
+					rel: "noopener noreferrer",
+				},
+			});
+			return true;
+		}
 
-private renderCardMedia(
-cardEl: HTMLElement,
-entry: BasesEntry,
-imageProperty: BasesPropertyId | null,
-): void {
-if (!imageProperty) {
-return;
-}
+		const linkEl = valueEl.createEl("a", { text: parsedLink.displayText });
+		linkEl.href = "#";
+		linkEl.addEventListener("click", (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			void this.app.workspace.openLinkText(
+				parsedLink.target,
+				entry.file.path,
+				false,
+			);
+		});
+		return true;
+	}
 
-const mediaEl = cardEl.createDiv({ cls: "bases-action-cards-card-media" });
-const mediaSource = extractImageSource(this.app, entry, entry.getValue(imageProperty));
-if (!mediaSource) {
-mediaEl.addClass("bases-action-cards-card-media--empty");
-return;
-}
+	private renderCardMedia(
+		cardEl: HTMLElement,
+		entry: BasesEntry,
+		imageProperty: BasesPropertyId | null,
+	): void {
+		if (!imageProperty) {
+			return;
+		}
 
-if (mediaSource.type === "color") {
-mediaEl.style.backgroundColor = mediaSource.value;
-return;
-}
+		const mediaEl = cardEl.createDiv({
+			cls: "bases-action-cards-card-media",
+		});
+		const mediaSource = extractImageSource(
+			this.app,
+			entry,
+			entry.getValue(imageProperty),
+		);
+		if (!mediaSource) {
+			mediaEl.addClass("bases-action-cards-card-media--empty");
+			return;
+		}
 
-const imageEl = mediaEl.createEl("img", {
-cls: "bases-action-cards-card-image",
-attr: {
-src: mediaSource.value,
-alt: `${entry.file.basename} cover image`,
-loading: "lazy",
-},
-});
-imageEl.addEventListener("error", () => {
-imageEl.remove();
-mediaEl.addClass("bases-action-cards-card-media--empty");
-});
-}
+		if (mediaSource.type === "color") {
+			mediaEl.style.backgroundColor = mediaSource.value;
+			return;
+		}
 
-private async openCardTarget(entry: BasesEntry): Promise<void> {
-const linkProperty = this.config.getAsPropertyId(LINK_PROPERTY_OPTION_KEY);
-if (!linkProperty) {
-await this.openEntryFile(entry);
-return;
-}
+		const imageEl = mediaEl.createEl("img", {
+			cls: "bases-action-cards-card-image",
+			attr: {
+				src: mediaSource.value,
+				alt: `${entry.file.basename} cover image`,
+				loading: "lazy",
+			},
+		});
+		imageEl.addEventListener("error", () => {
+			imageEl.remove();
+			mediaEl.addClass("bases-action-cards-card-media--empty");
+		});
+	}
 
-const linkTarget = resolveLinkTarget(this.app, entry, entry.getValue(linkProperty));
-if (linkTarget.kind === "empty") {
-await this.openEntryFile(entry);
-return;
-}
+	private async openCardTarget(entry: BasesEntry): Promise<void> {
+		const linkProperty = this.config.getAsPropertyId(
+			LINK_PROPERTY_OPTION_KEY,
+		);
+		if (!linkProperty) {
+			await this.openEntryFile(entry);
+			return;
+		}
 
-if (linkTarget.kind === "invalid") {
-new Notice(linkTarget.message);
-return;
-}
+		const linkTarget = resolveLinkTarget(
+			this.app,
+			entry,
+			entry.getValue(linkProperty),
+		);
+		if (linkTarget.kind === "empty") {
+			await this.openEntryFile(entry);
+			return;
+		}
 
-if (linkTarget.kind === "external") {
-window.open(linkTarget.url, "_blank");
-return;
-}
+		if (linkTarget.kind === "invalid") {
+			new Notice(linkTarget.message);
+			return;
+		}
 
-await this.app.workspace.openLinkText(linkTarget.linktext, entry.file.path, false);
-}
+		if (linkTarget.kind === "external") {
+			openExternalLink(linkTarget.url);
+			return;
+		}
 
-private async openEntryFile(entry: BasesEntry): Promise<void> {
-const leaf = this.app.workspace.getLeaf(false);
-await leaf.openFile(entry.file);
-}
+		await this.app.workspace.openLinkText(
+			linkTarget.linktext,
+			entry.file.path,
+			false,
+		);
+	}
+
+	private async openEntryFile(entry: BasesEntry): Promise<void> {
+		const leaf = this.app.workspace.getLeaf(false);
+		await leaf.openFile(entry.file);
+	}
 }
 
 type MediaSource =
-| { type: "image"; value: string }
-| { type: "color"; value: string };
+	| { type: "image"; value: string }
+	| { type: "color"; value: string };
 
 type ScalarValue = {
-raw: string;
-kind: "link" | "url" | "file" | "string" | "other";
+	raw: string;
+	kind: "link" | "url" | "file" | "string" | "other";
 };
 
 type LinkTarget =
-| { kind: "empty" }
-| { kind: "external"; url: string }
-| { kind: "internal"; linktext: string }
-| { kind: "invalid"; message: string };
+	| { kind: "empty" }
+	| { kind: "external"; url: string }
+	| { kind: "internal"; linktext: string }
+	| { kind: "invalid"; message: string };
 
 type ParsedLink =
-| { kind: "internal"; target: string; explicit: boolean }
-| { kind: "external"; target: string };
+	| { kind: "internal"; target: string; explicit: boolean }
+	| { kind: "external"; target: string };
 
 type ParsedExplicitLink =
-| { kind: "internal"; target: string; displayText: string }
-| { kind: "external"; target: string; displayText: string };
+	| { kind: "internal"; target: string; displayText: string }
+	| { kind: "external"; target: string; displayText: string };
 
 function getVisibleCardProperties(
 	config: BasesViewConfig,
 	imageProperty: BasesPropertyId | null,
 ): BasesPropertyId[] {
-	return config.getOrder().filter((propertyId) => (
-		propertyId !== imageProperty
-		&& !CARD_TITLE_PROPERTY_IDS.has(propertyId)
-	));
+	return config
+		.getOrder()
+		.filter(
+			(propertyId) =>
+				propertyId !== imageProperty &&
+				!CARD_TITLE_PROPERTY_IDS.has(propertyId),
+		);
 }
 
 function extractImageSource(
-app: App,
-entry: BasesEntry,
-value: Value | null,
+	app: App,
+	entry: BasesEntry,
+	value: Value | null,
 ): MediaSource | null {
-const scalarValue = getFirstScalarValue(value);
-if (!scalarValue) {
-return null;
+	const scalarValue = getFirstScalarValue(value);
+	if (!scalarValue) {
+		return null;
+	}
+
+	if (isHexColor(scalarValue.raw)) {
+		return { type: "color", value: scalarValue.raw };
+	}
+
+	const parsedLink = parseStructuredLink(
+		scalarValue.raw,
+		scalarValue.kind !== "string",
+	);
+	if (!parsedLink) {
+		return null;
+	}
+
+	if (parsedLink.kind === "external") {
+		return { type: "image", value: parsedLink.target };
+	}
+
+	const resolved = resolveInternalFile(
+		app,
+		parsedLink.target,
+		entry.file.path,
+	);
+	if (!resolved) {
+		return null;
+	}
+
+	return { type: "image", value: app.vault.getResourcePath(resolved) };
 }
 
-if (isHexColor(scalarValue.raw)) {
-return { type: "color", value: scalarValue.raw };
-}
+function resolveLinkTarget(
+	app: App,
+	entry: BasesEntry,
+	value: Value | null,
+): LinkTarget {
+	const scalarValue = getFirstScalarValue(value);
+	if (!scalarValue) {
+		return { kind: "empty" };
+	}
 
-const parsedLink = parseStructuredLink(scalarValue.raw, scalarValue.kind !== "string");
-if (!parsedLink) {
-return null;
-}
+	const parsedLink = parseStructuredLink(
+		scalarValue.raw,
+		scalarValue.kind !== "string",
+	);
+	if (!parsedLink) {
+		return {
+			kind: "invalid",
+			message: `Link property on “${entry.file.basename}” is not a valid Obsidian link or URL.`,
+		};
+	}
 
-if (parsedLink.kind === "external") {
-return { type: "image", value: parsedLink.target };
-}
+	if (parsedLink.kind === "external") {
+		if (!isValidExternalLink(parsedLink.target)) {
+			return {
+				kind: "invalid",
+				message: `Link property on “${entry.file.basename}” contains an invalid URL: ${scalarValue.raw}`,
+			};
+		}
 
-const resolved = resolveInternalFile(app, parsedLink.target, entry.file.path);
-if (!resolved) {
-return null;
-}
+		return { kind: "external", url: parsedLink.target };
+	}
 
-return { type: "image", value: app.vault.getResourcePath(resolved) };
-}
+	if (!parsedLink.explicit) {
+		const resolved = resolveInternalFile(
+			app,
+			parsedLink.target,
+			entry.file.path,
+		);
+		if (!resolved) {
+			return {
+				kind: "invalid",
+				message: `Link property on “${entry.file.basename}” must use a valid Obsidian link, file path, or URL.`,
+			};
+		}
+		return { kind: "internal", linktext: resolved.path };
+	}
 
-function resolveLinkTarget(app: App, entry: BasesEntry, value: Value | null): LinkTarget {
-const scalarValue = getFirstScalarValue(value);
-if (!scalarValue) {
-return { kind: "empty" };
-}
-
-const parsedLink = parseStructuredLink(scalarValue.raw, scalarValue.kind !== "string");
-if (!parsedLink) {
-return {
-kind: "invalid",
-message: `Link property on “${entry.file.basename}” is not a valid Obsidian link or URL.`,
-};
-}
-
-if (parsedLink.kind === "external") {
-if (!isValidExternalLink(parsedLink.target)) {
-return {
-kind: "invalid",
-message: `Link property on “${entry.file.basename}” contains an invalid URL: ${scalarValue.raw}`,
-};
-}
-
-return { kind: "external", url: parsedLink.target };
-}
-
-if (!parsedLink.explicit) {
-const resolved = resolveInternalFile(app, parsedLink.target, entry.file.path);
-if (!resolved) {
-return {
-kind: "invalid",
-message: `Link property on “${entry.file.basename}” must use a valid Obsidian link, file path, or URL.`,
-};
-}
-return { kind: "internal", linktext: resolved.path };
-}
-
-return { kind: "internal", linktext: parsedLink.target };
+	return { kind: "internal", linktext: parsedLink.target };
 }
 
 function getFirstScalarValue(value: Value | null): ScalarValue | null {
-if (!value) {
-return null;
-}
+	if (!value) {
+		return null;
+	}
 
 	if (value instanceof ListValue) {
 		for (let i = 0; i < value.length(); i += 1) {
@@ -458,28 +566,28 @@ return null;
 				return nested;
 			}
 		}
-return null;
-}
+		return null;
+	}
 
-const raw = value.toString().trim();
-if (!raw) {
-return null;
-}
+	const raw = value.toString().trim();
+	if (!raw) {
+		return null;
+	}
 
-if (value instanceof LinkValue) {
-return { raw, kind: "link" };
-}
-if (value instanceof UrlValue) {
-return { raw, kind: "url" };
-}
-if (value instanceof FileValue) {
-return { raw, kind: "file" };
-}
-if (value instanceof StringValue) {
-return { raw, kind: "string" };
-}
+	if (value instanceof LinkValue) {
+		return { raw, kind: "link" };
+	}
+	if (value instanceof UrlValue) {
+		return { raw, kind: "url" };
+	}
+	if (value instanceof FileValue) {
+		return { raw, kind: "file" };
+	}
+	if (value instanceof StringValue) {
+		return { raw, kind: "string" };
+	}
 
-return { raw, kind: "other" };
+	return { raw, kind: "other" };
 }
 
 function getSingleScalarValue(value: Value): ScalarValue | null {
@@ -495,95 +603,127 @@ function getSingleScalarValue(value: Value): ScalarValue | null {
 	return getFirstScalarValue(value);
 }
 
-function parseStructuredLink(rawValue: string, allowBareInternalPath: boolean): ParsedLink | null {
-const trimmed = rawValue.trim();
-if (!trimmed) {
-return null;
-}
-
-const explicitLink = parseExplicitStructuredLink(trimmed);
-if (explicitLink) {
-if (explicitLink.kind === "external") {
-	return {
-		kind: "external",
-		target: explicitLink.target,
-	};
-}
-return {
-	kind: "internal",
-	target: explicitLink.target,
-	explicit: true,
-};
-}
-
-if (isExternalOrProtocolLink(trimmed)) {
-return {
-kind: "external",
-target: normalizeExternalLink(trimmed),
-};
-}
-
-if (allowBareInternalPath && isLikelyInternalPath(trimmed)) {
-return { kind: "internal", target: trimmed, explicit: false };
-}
-
-return null;
-}
-
-function resolveInternalFile(app: App, link: string, sourcePath: string): TFile | null {
-const linktext = link.trim();
-if (!linktext) {
-return null;
-}
-
-const linkpath = getLinkpath(linktext).trim();
-if (!linkpath) {
-	const parsedLink = parseLinktext(linktext);
-	if (!parsedLink.subpath) {
+function parseStructuredLink(
+	rawValue: string,
+	allowBareInternalPath: boolean,
+): ParsedLink | null {
+	const trimmed = rawValue.trim();
+	if (!trimmed) {
 		return null;
 	}
-	const sourceFile = app.vault.getAbstractFileByPath(sourcePath);
-	return sourceFile instanceof TFile ? sourceFile : null;
+
+	const explicitLink = parseExplicitStructuredLink(trimmed);
+	if (explicitLink) {
+		if (explicitLink.kind === "external") {
+			return {
+				kind: "external",
+				target: explicitLink.target,
+			};
+		}
+		return {
+			kind: "internal",
+			target: explicitLink.target,
+			explicit: true,
+		};
+	}
+
+	if (isExternalOrProtocolLink(trimmed)) {
+		return {
+			kind: "external",
+			target: normalizeExternalLink(trimmed),
+		};
+	}
+
+	if (allowBareInternalPath && isLikelyInternalPath(trimmed)) {
+		return { kind: "internal", target: trimmed, explicit: false };
+	}
+
+	return null;
 }
 
-const direct = app.vault.getAbstractFileByPath(linkpath);
-if (direct instanceof TFile) {
-return direct;
-}
+function resolveInternalFile(
+	app: App,
+	link: string,
+	sourcePath: string,
+): TFile | null {
+	const linktext = link.trim();
+	if (!linktext) {
+		return null;
+	}
 
-const destination = app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
-if (destination instanceof TFile) {
-return destination;
-}
+	const linkpath = getLinkpath(linktext).trim();
+	if (!linkpath) {
+		const parsedLink = parseLinktext(linktext);
+		if (!parsedLink.subpath) {
+			return null;
+		}
+		const sourceFile = app.vault.getAbstractFileByPath(sourcePath);
+		return sourceFile instanceof TFile ? sourceFile : null;
+	}
 
-return null;
+	const direct = app.vault.getAbstractFileByPath(linkpath);
+	if (direct instanceof TFile) {
+		return direct;
+	}
+
+	const destination = app.metadataCache.getFirstLinkpathDest(
+		linkpath,
+		sourcePath,
+	);
+	if (destination instanceof TFile) {
+		return destination;
+	}
+
+	return null;
 }
 
 function getNumberOption(value: unknown, fallback: number): number {
-return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+	return typeof value === "number" && Number.isFinite(value)
+		? value
+		: fallback;
 }
 
-function getStringOption(value: unknown, fallback: string): string {
-return typeof value === "string" && value.trim().length > 0 ? value : fallback;
+function getStringOptionFromAllowedValues(
+	value: unknown,
+	fallback: string,
+	allowedValues: readonly string[],
+): string {
+	return typeof value === "string" && allowedValues.includes(value)
+		? value
+		: fallback;
 }
 
 function isLikelyInternalPath(value: string): boolean {
-return value.includes("/") || value.includes("#") || value.endsWith(".md");
+	return value.includes("/") || value.includes("#") || value.endsWith(".md");
 }
 
 function isExternalOrProtocolLink(value: string): boolean {
-if (value.startsWith("www.")) {
-return true;
-}
+	if (value.startsWith("www.")) {
+		return true;
+	}
 
-return /^[a-zA-Z][a-zA-Z0-9+.-]*:/u.test(value);
+	return /^[a-zA-Z][a-zA-Z0-9+.-]*:/u.test(value);
 }
 
 function normalizeExternalLink(value: string): string {
-return value.startsWith("www.") ? `https://${value}` : value;
+	return value.startsWith("www.") ? `https://${value}` : value;
 }
 
-function parseExplicitStructuredLink(rawValue: string): ParsedExplicitLink | null {
+function getSafeExternalUrl(value: string): URL | null {
+	try {
+		const parsedUrl = new URL(value);
+		if (BLOCKED_EXTERNAL_PROTOCOLS.has(parsedUrl.protocol.toLowerCase())) {
+			return null;
+		}
+		return parsedUrl;
+	} catch {
+		return null;
+	}
+}
+
+function parseExplicitStructuredLink(
+	rawValue: string,
+): ParsedExplicitLink | null {
 	const trimmed = rawValue.trim();
 	if (!trimmed) {
 		return null;
@@ -591,7 +731,10 @@ function parseExplicitStructuredLink(rawValue: string): ParsedExplicitLink | nul
 
 	const wikilinkMatch = trimmed.match(/^!?\[\[([^\]]+)\]\]$/u);
 	if (wikilinkMatch?.[1]) {
-		const [targetPart, displayPart] = splitLinkAndDisplay(wikilinkMatch[1], "|");
+		const [targetPart, displayPart] = splitLinkAndDisplay(
+			wikilinkMatch[1],
+			"|",
+		);
 		if (!targetPart) {
 			return null;
 		}
@@ -645,14 +788,17 @@ function parseExplicitStructuredLink(rawValue: string): ParsedExplicitLink | nul
 	return null;
 }
 
-function splitLinkAndDisplay(value: string, delimiter: string): [target: string, display: string] {
+function splitLinkAndDisplay(
+	value: string,
+	delimiter: string,
+): [target: string, display: string] {
 	const delimiterIndex = value.indexOf(delimiter);
-	const target = delimiterIndex === -1
-		? value.trim()
-		: value.slice(0, delimiterIndex).trim();
-	const display = delimiterIndex === -1
-		? ""
-		: value.slice(delimiterIndex + 1).trim();
+	const target =
+		delimiterIndex === -1
+			? value.trim()
+			: value.slice(0, delimiterIndex).trim();
+	const display =
+		delimiterIndex === -1 ? "" : value.slice(delimiterIndex + 1).trim();
 	return [target, display || target];
 }
 
@@ -671,19 +817,19 @@ function parseMarkdownLinkDestination(value: string): string | null {
 	}
 
 	const firstWhitespace = trimmed.search(/\s/u);
-	const destination = firstWhitespace === -1 ? trimmed : trimmed.slice(0, firstWhitespace);
+	const destination =
+		firstWhitespace === -1 ? trimmed : trimmed.slice(0, firstWhitespace);
 	return destination.trim() || null;
 }
 
 function isValidExternalLink(value: string): boolean {
-try {
-new URL(value);
-return true;
-} catch {
-return false;
+	return getSafeExternalUrl(value) !== null;
 }
+
+function openExternalLink(value: string): void {
+	window.open(value, "_blank", "noopener,noreferrer");
 }
 
 function isHexColor(value: string): boolean {
-return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/u.test(value);
+	return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/u.test(value);
 }
